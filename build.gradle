@@ -1,0 +1,25 @@
+plugins {
+    id "com.github.johnrengelman.shadow" version "4.0.3"
+}
+
+apply plugin: 'java'
+apply plugin: 'groovy'
+apply plugin: 'application'
+apply plugin: 'com.github.johnrengelman.shadow'
+
+mainClassName = 'codes.recursive.PolicyGenerator'
+
+repositories {
+    maven { url "http://repo.maven.apache.org/maven2" }
+    mavenLocal()
+    mavenCentral()
+}
+
+configurations {
+    localGroovyConf
+}
+
+dependencies {
+    localGroovyConf localGroovy()
+    compile 'org.codehaus.groovy:groovy-all:3.0.0-alpha-3'
+}
