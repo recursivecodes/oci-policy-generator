@@ -357,7 +357,7 @@ class OciPolicyGenerator {
 
     OciPolicyGenerator() {
         addShutdownHook {
-            if( !policyGenerated ) println '${NEW_LINE}Leaving so soon????'
+            if( !policyGenerated ) println "${NEW_LINE}Leaving so soon????"
         }
         this.ociVersion = "oci --version".execute().text
         if( !this.ociVersion ) {
