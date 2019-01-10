@@ -50,12 +50,12 @@ class OciPolicyGenerator {
     String policy = 'allow'
     JsonSlurper slurper = new JsonSlurper()
     String target
-    List actors = []
+    List subjects = []
     List compartments = []
     List compartmentsWithRoot = []
     Map selectedCompartment
     Map selectedPolicyCompartment
-    List selectedActors
+    List selectedSubjects
     Map selectedVerb
     Map selectedResourceType
     Map selectedLocation
@@ -67,7 +67,7 @@ class OciPolicyGenerator {
     // static constants
     static final List TARGETS = [
             [
-                    target: "user",
+                    target: "any-user",
             ],
             [
                     target: "group",
@@ -386,24 +386,29 @@ class OciPolicyGenerator {
         buildPolicy(target)
         /* end target */
 
-        /* start actor */
-        actors =  listActors(target)
-
-        if( !actors.size() ) {
-            throw new Exception("There are no ${target} available to use for this policy!")
+        /* start subject */
+        if( target == 'any-user' ) {
+            /* no further scope necessary */
         }
         else {
-            println "${NEW_LINE}Available Actors: "
-            actors.eachWithIndex { def entry, int i ->
-                println "${i}: ${entry.name}"
-            }
-        }
+            subjects =  listSubjects(target)
 
-        while( !selectedActors ) {
-            selectedActors = selectActors()
+            if( !subjects.size() ) {
+                throw new Exception("There are no ${target} available to use for this policy!")
+            }
+            else {
+                println "${NEW_LINE}Available Subjects: "
+                subjects.eachWithIndex { def entry, int i ->
+                    println "${i}: ${entry.name}"
+                }
+            }
+
+            while( !selectedSubjects ) {
+                selectedSubjects = selectSubjects()
+            }
+            buildPolicy(selectedSubjects*.name.join(", "))
         }
-        buildPolicy(selectedActors*.name.join(", "))
-        /* end actor */
+        /* end subject */
 
         /* start verb */
         println "${NEW_LINE}Available Verbs: "
@@ -570,9 +575,9 @@ class OciPolicyGenerator {
     }
 
     def selectTarget() {
-        Integer target = safeInteger( System.console().readLine("User (0) or Group (1)? ") )
+        Integer target = safeInteger( System.console().readLine("Any User (0) or Group (1)? ") )
         if( target < 0 || target > 1 ) {
-            println "Please choose user (0) or group (1)!"
+            println "Please choose any-user (0) or a specific group (1)!"
             target = null
         }
         else {
@@ -609,22 +614,22 @@ class OciPolicyGenerator {
         return type != null ? RESOURCE_TYPES[type] : null
     }
 
-    def selectActors() {
-        List selections = safeList( System.console().readLine("Choose actor(s) [0-${actors.size() - 1}] (separate multiple with a comma): ") )
+    def selectSubjects() {
+        List selections = safeList( System.console().readLine("Choose subject(s) [0-${subjects.size() - 1}] (separate multiple with a comma): ") )
 
         selections.each { sel ->
-            if( sel < 0 || sel > actors.size() - 1 ) {
-                println "Please enter all choices between 0 and ${actors.size() - 1}!"
+            if( sel < 0 || sel > subjects.size() - 1 ) {
+                println "Please enter all choices between 0 and ${subjects.size() - 1}!"
                 selections = null
             }
         }
 
         if( selections != null ) {
-            def selectedActors = []
+            def selectedSubjects = []
             selections.eachWithIndex { it, idx ->
-                selectedActors << actors[idx]
+                selectedSubjects << subjects[idx]
             }
-            return selectedActors
+            return selectedSubjects
         }
         else {
             return null
@@ -683,18 +688,18 @@ class OciPolicyGenerator {
         }
     }
 
-    def listActors(type){
-        def actorResult = ""
+    def listSubjects(type){
+        def subjectResult = ""
         switch (type) {
             case 'user':
-                actorResult = "oci iam user list --all".execute().text
+                subjectResult = "oci iam user list --all".execute().text
                 break
             case 'group':
-                actorResult = "oci iam group list --all".execute().text
+                subjectResult = "oci iam group list --all".execute().text
                 break
         }
 
-        actors = slurper.parseText( actorResult ).data
+        subjects = slurper.parseText( subjectResult ).data
     }
 
 }
