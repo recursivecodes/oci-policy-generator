@@ -47,6 +47,7 @@ class PropertiesWithSections extends Properties {
 
 class OciPolicyGenerator {
     String ociVersion
+    String version = "0.3"
     String policy = 'allow'
     JsonSlurper slurper = new JsonSlurper()
     String target
@@ -56,6 +57,7 @@ class OciPolicyGenerator {
     Map selectedCompartment
     Map selectedPolicyCompartment
     List selectedSubjects
+    List selectedServices
     Map selectedVerb
     Map selectedResourceType
     Map selectedLocation
@@ -71,6 +73,15 @@ class OciPolicyGenerator {
             ],
             [
                     target: "group",
+            ],
+            [
+                    "target": "service",
+            ]
+    ]
+
+    static final List SERVICES = [
+            [
+                    service: "FaaS",
             ],
     ]
 
@@ -324,6 +335,14 @@ class OciPolicyGenerator {
                     type: "backup-policies",
             ],
             [
+                    type: "functions-family",
+                    includes: "(none at this time)",
+                    family: true,
+            ],
+            [
+                    break: true,
+            ],
+            [
                     type: "compartments",
             ],
             [
@@ -353,6 +372,9 @@ class OciPolicyGenerator {
             [
                     type: "workrequest",
             ],
+            [
+                    type: "repos",
+            ],
     ]
 
     OciPolicyGenerator() {
@@ -373,7 +395,7 @@ class OciPolicyGenerator {
                                        /____/                                                      
 """
         println banner
-        println "Using OCI CLI version ${ociVersion}"
+        println "OCI Policy Generator v${version} is using OCI CLI version ${ociVersion.trim()}.${NEW_LINE}"
 
     }
 
@@ -390,7 +412,7 @@ class OciPolicyGenerator {
         if( target == 'any-user' ) {
             /* no further scope necessary */
         }
-        else {
+        if( target == 'group' ) {
             subjects =  listSubjects(target)
 
             if( !subjects.size() ) {
@@ -407,6 +429,16 @@ class OciPolicyGenerator {
                 selectedSubjects = selectSubjects()
             }
             buildPolicy(selectedSubjects*.name.join(", "))
+        }
+        if( target == 'service' ) {
+            println "${NEW_LINE}Available Services: "
+            SERVICES.eachWithIndex { def entry, int i ->
+                println "${i}: ${entry.service}"
+            }
+            while( !selectedServices ) {
+                selectedServices = selectServices()
+            }
+            buildPolicy(selectedServices*.service.join(", "))
         }
         /* end subject */
 
@@ -433,10 +465,15 @@ class OciPolicyGenerator {
             else {
                 counter = counter + 1
             }
-            System.out.format( "${entry?.family ? isFamilyBreak : ''} %-30s ${entry?.family || counter % 3 == 0 ? '%n' : ''}", "${i}: ${entry.type} ${entry?.includes ? entry.includes : ''} " )
+            if( !entry.break ) {
+                System.out.format( "${entry?.family ? isFamilyBreak : ''} %-30s ${entry?.family || counter % 3 == 0 ? '%n' : ''}", "${i}: ${entry.type} ${entry?.includes ? entry.includes : ''} " )
+            }
+            else {
+                print(NEW_LINE)
+            }
             if( entry.type == 'backup-policies'){
                 counter = 0
-                println("${NEW_LINE}")
+                print("${NEW_LINE}")
             }
         }
         println("${NEW_LINE}")
@@ -575,9 +612,9 @@ class OciPolicyGenerator {
     }
 
     def selectTarget() {
-        Integer target = safeInteger( System.console().readLine("Any User (0) or Group (1)? ") )
-        if( target < 0 || target > 1 ) {
-            println "Please choose any-user (0) or a specific group (1)!"
+        Integer target = safeInteger( System.console().readLine("Any User (0), Group (1) or Service (2)? ") )
+        if( target < 0 || target > 2 ) {
+            println "Please choose any-user (0), group (1), or service (2)!"
             target = null
         }
         else {
@@ -627,9 +664,31 @@ class OciPolicyGenerator {
         if( selections != null ) {
             def selectedSubjects = []
             selections.eachWithIndex { it, idx ->
-                selectedSubjects << subjects[idx]
+                selectedSubjects << subjects[it]
             }
             return selectedSubjects
+        }
+        else {
+            return null
+        }
+    }
+
+    def selectServices() {
+        List services = safeList( System.console().readLine("Choose service(s) [0-${subjects.size() - 1}] (separate multiple with a comma): ") )
+
+        services.each { sel ->
+            if( sel < 0 || sel > SERVICES.size() - 1 ) {
+                println "Please enter all choices between 0 and ${SERVICES.size() - 1}!"
+                services = null
+            }
+        }
+
+        if( services != null ) {
+            def selectedServices = []
+            services.eachWithIndex { it, idx ->
+                selectedServices << SERVICES[it]
+            }
+            return selectedServices
         }
         else {
             return null
