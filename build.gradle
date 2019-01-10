@@ -8,6 +8,7 @@ apply plugin: 'application'
 apply plugin: 'com.github.johnrengelman.shadow'
 
 mainClassName = 'codes.recursive.PolicyGenerator'
+project.version = 0.2
 
 repositories {
     maven { url "http://repo.maven.apache.org/maven2" }
@@ -22,4 +23,8 @@ configurations {
 dependencies {
     localGroovyConf localGroovy()
     compile 'org.codehaus.groovy:groovy-all:3.0.0-alpha-3'
+}
+
+shadowJar {
+    archiveName = "oci-policy-generator-${project.version}.jar"
 }
